@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  password      String
+  transactions  Transaction[]
+  alerts        Alert[]
+  createdAt     DateTime      @default(now())
+}
+
+model Transaction {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  coinId       String   // CoinGecko ID
+  coinSymbol   String   // BTC, ETH, etc
+  type         String   // buy, sell
+  quantity     Float
+  pricePerCoin Float
+  fee          Float    @default(0)
+  timestamp    DateTime
+  exchange     String?
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model Alert {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  coinId    String
+  targetPrice Float
+  direction String // 'above' or 'below'
+  triggered Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
