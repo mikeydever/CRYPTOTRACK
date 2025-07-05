@@ -1,7 +1,15 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { PortfolioDashboard } from '../components/PortfolioDashboard';
+
+// Mock the @tanstack/react-query module
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQuery: jest.fn(),
+}));
+
+const mockUseQuery = useQuery as jest.Mock;
 
 // Mock data for our tests
 const mockData = {
@@ -32,14 +40,8 @@ const mockData = {
   ],
 };
 
-// Helper to create a new QueryClient for each test, ensuring test isolation
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false, // Disable retries for faster test execution
-    },
-  },
-});
+// Helper to create a new QueryClient for each test
+const createTestQueryClient = () => new QueryClient();
 
 // Helper to wrap the component in a QueryClientProvider
 const createWrapper = (client: QueryClient) => ({ children }: { children: ReactNode }) => (
@@ -48,57 +50,65 @@ const createWrapper = (client: QueryClient) => ({ children }: { children: ReactN
 
 describe('PortfolioDashboard', () => {
   
-  // Restore all mocks after each test to prevent test pollution
-  afterEach(() => {
-    jest.restoreAllMocks();
+  beforeEach(() => {
+    // Reset the mock before each test
+    mockUseQuery.mockClear();
   });
 
   test('displays loading state initially', () => {
+    mockUseQuery.mockReturnValue({ isLoading: true, error: null, data: null });
     const queryClient = createTestQueryClient();
-    // Mock a fetch that never resolves to keep the component in a loading state
-    jest.spyOn(global, 'fetch').mockImplementation(() => new Promise(() => {}));
-    
     render(<PortfolioDashboard />, { wrapper: createWrapper(queryClient) });
-    
-    // The loading indicator should be visible
     expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
-  test('displays portfolio value and profit/loss on success', async () => {
+  test('displays portfolio value and profit/loss on success', () => {
+    mockUseQuery.mockReturnValue({ isLoading: false, error: null, data: mockData });
     const queryClient = createTestQueryClient();
-    // Mock a successful fetch response
-    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      json: async () => (mockData),
-    } as Response);
-
     render(<PortfolioDashboard />, { wrapper: createWrapper(queryClient) });
-
-    // Wait for the component to render the data
-    await waitFor(() => {
-      // Check for the total value with a regex to handle formatting
-      expect(screen.getByText(/\$\s*33500\.00/)).toBeInTheDocument();
-    });
-
-    // Check for the profit/loss information
+    expect(screen.getByText(/\$\s*33500\.00/)).toBeInTheDocument();
     const profitLoss = screen.getByText(/\+\s*3485\.00\s*\(\s*10\.40\s*%\)/);
     expect(profitLoss).toBeInTheDocument();
     expect(profitLoss).toHaveClass('text-green-500');
   });
 
-  test('displays error message on fetch failure', async () => {
+  test('displays error message on fetch failure', () => {
+    mockUseQuery.mockReturnValue({ isLoading: false, error: new Error('Network error'), data: null });
     const queryClient = createTestQueryClient();
-    // Mock a failed fetch response
-    jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+    render(<PortfolioDashboard />, { wrapper: createWrapper(queryClient) });
+    expect(screen.getByTestId('error')).toBeInTheDocument();
+    expect(screen.getByText('Error: Network error')).toBeInTheDocument();
+  });
 
+  test('displays holdings table correctly', () => {
+    mockUseQuery.mockReturnValue({ isLoading: false, error: null, data: mockData });
+    const queryClient = createTestQueryClient();
     render(<PortfolioDashboard />, { wrapper: createWrapper(queryClient) });
 
-    // Wait for the error message to be displayed
-    await waitFor(() => {
-      expect(screen.getByTestId('error')).toBeInTheDocument();
-    });
+    // Check for table headers
+    expect(screen.getByText('Coin')).toBeInTheDocument();
+    expect(screen.getByText('Quantity')).toBeInTheDocument();
     
-    // Verify the content of the error message
-    expect(screen.getByText('Error: Network error')).toBeInTheDocument();
+    // Check for Bitcoin data
+    expect(screen.getByText('BTC')).toBeInTheDocument();
+    expect(screen.getByText('0.5000')).toBeInTheDocument();
+    expect(screen.getByText('$40020.00')).toBeInTheDocument();
+
+    // Check for Ethereum data
+    expect(screen.getByText('ETH')).toBeInTheDocument();
+    expect(screen.getByText('5.0000')).toBeInTheDocument();
+    expect(screen.getByText('$2001.00')).toBeInTheDocument();
+  });
+
+  test('useQuery is called with a refetchInterval of 30000', () => {
+    mockUseQuery.mockReturnValue({ isLoading: true, error: null, data: null });
+    const queryClient = createTestQueryClient();
+    render(<PortfolioDashboard />, { wrapper: createWrapper(queryClient) });
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refetchInterval: 30000,
+      })
+    );
   });
 });

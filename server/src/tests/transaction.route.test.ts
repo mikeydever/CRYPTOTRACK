@@ -178,4 +178,47 @@ describe('Transaction Routes', () => {
       expect(res.body).toEqual({ error: 'Database error' });
     });
   });
+
+  describe('POST /api/transactions/import', () => {
+    test('should import transactions from CSV', async () => {
+      const csvContent = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,0.1,50000,10,2023-01-01T12:00:00.000Z,Coinbase,notes 1
+ethereum,ETH,buy,2,2000,5,2023-01-02T12:00:00.000Z,Binance,notes 2`;
+      const mockImportedTransactions = [
+        { id: '3', userId: 'testUserId', coinId: 'bitcoin', coinSymbol: 'BTC', type: 'buy', quantity: 0.1, pricePerCoin: 50000, fee: 10, timestamp: new Date('2023-01-01T12:00:00.000Z'), exchange: 'Coinbase', notes: 'notes 1' },
+        { id: '4', userId: 'testUserId', coinId: 'ethereum', coinSymbol: 'ETH', type: 'buy', quantity: 2, pricePerCoin: 2000, fee: 5, timestamp: new Date('2023-01-02T12:00:00.000Z'), exchange: 'Binance', notes: 'notes 2' },
+      ];
+      (transactionService.importTransactionsFromCsv as jest.Mock).mockResolvedValue(mockImportedTransactions);
+
+      const res = await request(app)
+        .post('/api/transactions/import')
+        .send({ csv: csvContent });
+
+      expect(res.statusCode).toEqual(201);
+      expect(res.body.message).toEqual('Successfully imported 2 transactions.');
+      expect(res.body.importedTransactions).toEqual(mockImportedTransactions.map(t => ({...t, timestamp: t.timestamp.toISOString()})));
+      expect(transactionService.importTransactionsFromCsv).toHaveBeenCalledWith('testUserId', csvContent);
+    });
+
+    test('should return 400 if CSV content is missing', async () => {
+      const res = await request(app)
+        .post('/api/transactions/import')
+        .send({});
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body).toEqual({ error: 'CSV content is required' });
+    });
+
+    test('should handle errors during CSV import', async () => {
+      const csvContent = 'invalid csv';
+      (transactionService.importTransactionsFromCsv as jest.Mock).mockRejectedValue(new Error('Invalid CSV format'));
+
+      const res = await request(app)
+        .post('/api/transactions/import')
+        .send({ csv: csvContent });
+
+      expect(res.statusCode).toEqual(500);
+      expect(res.body).toEqual({ error: 'Invalid CSV format' });
+    });
+  });
 });

@@ -43,23 +43,29 @@ export async function importTransactionsFromCsv(userId: string, csvContent: stri
   const transactionsToCreate: Omit<Transaction, 'id' | 'createdAt'>[] = [];
 
   return new Promise((resolve, reject) => {
-    let hasError = false;
-
     const csvStream = Readable.from(csvContent).pipe(csv());
 
-    csvStream.on('data', (row) => {
-      if (hasError) return; // Stop processing if an error has already occurred
+    csvStream.on('headers', (headers) => {
+      const requiredHeaders = ['coinId', 'coinSymbol', 'type', 'quantity', 'pricePerCoin', 'timestamp'];
+      const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+      if (missingHeaders.length > 0) {
+        const errorMessage = `Missing required columns in CSV: ${missingHeaders.join(', ')}`;
+        csvStream.destroy(new Error(errorMessage)); // Destroy stream to stop further processing
+        reject(new Error(errorMessage));
+      }
+    });
 
+    csvStream.on('data', (row) => {
       const quantity = parseFloat(row.quantity);
       const pricePerCoin = parseFloat(row.pricePerCoin);
       const fee = row.fee ? parseFloat(row.fee) : 0;
       const timestamp = new Date(row.timestamp);
 
       if (isNaN(quantity) || isNaN(pricePerCoin) || isNaN(fee) || isNaN(timestamp.getTime())) {
-        hasError = true;
-        csvStream.destroy(new Error('Failed to parse CSV content. Please check your data format.'));
-        reject(new Error('Failed to parse CSV content. Please check your data format.'));
-        return;
+        const errorMessage = 'Failed to parse CSV content. Please check your data format.';
+        csvStream.destroy(new Error(errorMessage)); // Destroy stream to stop further processing
+        reject(new Error(errorMessage));
+        return; // Stop further processing of this row
       }
 
       const transaction: Omit<Transaction, 'id' | 'createdAt'> = {
@@ -77,7 +83,6 @@ export async function importTransactionsFromCsv(userId: string, csvContent: stri
       transactionsToCreate.push(transaction);
     })
     .on('end', async () => {
-      if (hasError) return; // Do not resolve if an error has occurred
       try {
         const createdTransactions: Transaction[] = [];
         for (const transactionData of transactionsToCreate) {
@@ -91,7 +96,6 @@ export async function importTransactionsFromCsv(userId: string, csvContent: stri
       }
     })
     .on('error', (error) => {
-      if (hasError) return; // Do not reject again if an error has already occurred
       console.error('CSV parsing error:', error);
       reject(new Error('Failed to parse CSV content.'));
     });

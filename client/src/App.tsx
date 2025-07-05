@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { PortfolioDashboard } from './components/PortfolioDashboard';
 import { TransactionPage } from './pages/TransactionPage';
+import { AlertPage } from './pages/AlertPage';
 
 function App() {
   return (

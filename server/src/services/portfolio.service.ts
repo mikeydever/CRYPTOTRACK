@@ -28,9 +28,12 @@ export function calculateProfitLoss(transactions: Transaction[], currentPrice: n
 }
 
 export function calculatePortfolioMetrics(transactions: Transaction[], currentPrices: { [coinId: string]: number }) {
-  const holdings: { [coinId: string]: { quantity: number; totalCost: number; averagePrice: number; currentPrice: number; value: number; profitLoss: number; profitLossPercent: number } } = {};
+  const holdings: { [coinId: string]: { quantity: number; totalCost: number; averagePrice: number; currentPrice: number; value: number; profitLoss: number; profitLossPercent: number; realizedProfitLoss: number; } } = {};
 
-  transactions.forEach(t => {
+  // Sort transactions by timestamp to process them in order
+  const sortedTransactions = [...transactions].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  sortedTransactions.forEach(t => {
     if (!holdings[t.coinId]) {
       holdings[t.coinId] = {
         quantity: 0,
@@ -38,50 +41,53 @@ export function calculatePortfolioMetrics(transactions: Transaction[], currentPr
         averagePrice: 0,
         currentPrice: 0,
         value: 0,
-        profitLoss: 0,
+        profitLoss: 0, // This will be unrealized P/L
         profitLossPercent: 0,
+        realizedProfitLoss: 0,
       };
     }
 
+    const holding = holdings[t.coinId];
+    const avgPriceBeforeTx = holding.quantity > 0 ? holding.totalCost / holding.quantity : 0;
+
     if (t.type === 'buy') {
-      holdings[t.coinId].quantity += t.quantity;
-      holdings[t.coinId].totalCost += (t.quantity * t.pricePerCoin + (t.fee || 0));
+      holding.quantity += t.quantity;
+      holding.totalCost += (t.quantity * t.pricePerCoin + (t.fee || 0));
     } else if (t.type === 'sell') {
-      // Calculate cost of sold quantity based on current average price before updating quantity
-      const costOfSoldQuantity = t.quantity * holdings[t.coinId].averagePrice;
-      holdings[t.coinId].quantity -= t.quantity;
-      holdings[t.coinId].totalCost -= costOfSoldQuantity;
+      const costOfSoldAssets = avgPriceBeforeTx * t.quantity;
+      const proceedsFromSale = t.quantity * t.pricePerCoin - (t.fee || 0);
 
-      // If quantity becomes zero or negative, reset cost basis
-      if (holdings[t.coinId].quantity <= 0) {
-        holdings[t.coinId].totalCost = 0;
-        holdings[t.coinId].averagePrice = 0;
-      }
-    }
-
-    // Recalculate average price after each transaction for accurate cost basis
-    if (holdings[t.coinId].quantity > 0) {
-      holdings[t.coinId].averagePrice = holdings[t.coinId].totalCost / holdings[t.coinId].quantity;
-    } else {
-      holdings[t.coinId].averagePrice = 0;
+      holding.realizedProfitLoss += (proceedsFromSale - costOfSoldAssets);
+      holding.totalCost -= costOfSoldAssets;
+      holding.quantity -= t.quantity;
     }
   });
 
   let totalPortfolioValue = 0;
   let totalPortfolioProfitLoss = 0;
-  let totalPortfolioCost = 0;
+  let totalInitialCost = 0;
 
   for (const coinId in holdings) {
     const holding = holdings[coinId];
+    
+    holding.averagePrice = holding.quantity > 0 ? holding.totalCost / holding.quantity : 0;
     holding.currentPrice = currentPrices[coinId] || 0;
     holding.value = holding.quantity * holding.currentPrice;
-    holding.profitLoss = holding.value - holding.totalCost;
-    holding.profitLossPercent = holding.totalCost > 0 ? (holding.profitLoss / holding.totalCost) * 100 : 0;
+    
+    const unrealizedProfitLoss = holding.value - holding.totalCost;
+    holding.profitLoss = unrealizedProfitLoss; // Unrealized P/L for the current holding
+    
+    holding.profitLossPercent = holding.totalCost > 0 ? (unrealizedProfitLoss / holding.totalCost) * 100 : 0;
 
     totalPortfolioValue += holding.value;
-    totalPortfolioProfitLoss += holding.profitLoss;
-    totalPortfolioCost += holding.totalCost;
+    totalPortfolioProfitLoss += (holding.realizedProfitLoss + unrealizedProfitLoss);
+    totalInitialCost += holding.totalCost;
   }
+  
+  const totalPortfolioCost = sortedTransactions
+    .filter(t => t.type === 'buy')
+    .reduce((acc, t) => acc + (t.quantity * t.pricePerCoin + (t.fee || 0)), 0);
+
 
   return {
     holdings: Object.keys(holdings).map(coinId => ({ ...holdings[coinId], coinId })),

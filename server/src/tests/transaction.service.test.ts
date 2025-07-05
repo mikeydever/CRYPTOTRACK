@@ -193,6 +193,42 @@ bitcoin,BTC,buy,invalid_quantity,40000,10,2023-01-01T10:00:00Z,Binance,Initial b
       await expect(importTransactionsFromCsv(userId, malformedCsv)).rejects.toThrow('Failed to parse CSV content. Please check your data format.');
     });
 
+    test('should reject if required columns are missing', async () => {
+      const csvContent = `coinId,type,quantity,pricePerCoin\nbitcoin,buy,1,50000`;
+      const userId = 'testUserId';
+      await expect(importTransactionsFromCsv(userId, csvContent)).rejects.toThrow('Missing required columns in CSV: coinSymbol, timestamp');
+    });
+
+    test('should handle empty CSV content', async () => {
+      const csvContent = '';
+      const userId = 'testUserId';
+      const result = await importTransactionsFromCsv(userId, csvContent);
+      expect(result).toEqual([]);
+      expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    test('should handle CSV with only a header', async () => {
+      const csvContent = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes`;
+      const userId = 'testUserId';
+      const result = await importTransactionsFromCsv(userId, csvContent);
+      expect(result).toEqual([]);
+      expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    test('should handle CSV with extra columns', async () => {
+      const csvContent = `coinId,coinSymbol,type,quantity,pricePerCoin,timestamp,extra_column\nbitcoin,BTC,buy,1,50000,2023-01-01T10:00:00Z,some_value`;
+      const userId = 'testUserId';
+      (prisma.transaction.create as jest.Mock).mockResolvedValueOnce({ id: '1', userId, coinId: 'bitcoin', coinSymbol: 'BTC', type: 'buy', quantity: 1, pricePerCoin: 50000 });
+      const result = await importTransactionsFromCsv(userId, csvContent);
+      expect(result).toHaveLength(1);
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          coinId: 'bitcoin',
+          quantity: 1,
+        }),
+      });
+    })
+
     test('should handle database errors during transaction creation', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -200,7 +236,7 @@ bitcoin,BTC,buy,invalid_quantity,40000,10,2023-01-01T10:00:00Z,Binance,Initial b
 bitcoin,BTC,buy,0.5,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;
       const userId = 'testUserId';
 
-      (prisma.transaction.create as jest.Mock).mockRejectedValueOnce(new Error('Database connection error'));
+      (prisma.transaction.create as jest.Mock).mockRejectedValue(new Error('Database connection error'));
 
       await expect(importTransactionsFromCsv(userId, csvContent)).rejects.toThrow('Failed to import transactions into the database.');
 
