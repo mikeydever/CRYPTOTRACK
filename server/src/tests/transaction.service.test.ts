@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { createTransaction, getTransactionsByUserId, updateTransaction, deleteTransaction } from '../services/transaction.service';
+import { createTransaction, getTransactionsByUserId, updateTransaction, deleteTransaction, importTransactionsFromCsv } from '../services/transaction.service';
 
 jest.mock('@prisma/client', () => {
   const prismaMock = {
@@ -106,6 +106,106 @@ describe('Transaction Service', () => {
       expect(prisma.transaction.delete).toHaveBeenCalledWith({
         where: { id: 'trans1', userId: 'user123' },
       });
+    });
+  });
+
+  describe('importTransactionsFromCsv', () => {
+    test('should import transactions from a CSV string', async () => {
+      const csvContent = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,0.5,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy
+ethereum,ETH,sell,1,2000,5,2023-01-02T11:00:00Z,Coinbase,Quick sale`;
+      const userId = 'testUserId';
+
+      const mockCreatedTransactions = [
+        {
+          id: '1',
+          userId,
+          coinId: 'bitcoin',
+          coinSymbol: 'BTC',
+          type: 'buy',
+          quantity: 0.5,
+          pricePerCoin: 40000,
+          fee: 10,
+          timestamp: new Date('2023-01-01T10:00:00Z'),
+          exchange: 'Binance',
+          notes: 'Initial buy',
+          createdAt: new Date(),
+        },
+        {
+          id: '2',
+          userId,
+          coinId: 'ethereum',
+          coinSymbol: 'ETH',
+          type: 'sell',
+          quantity: 1,
+          pricePerCoin: 2000,
+          fee: 5,
+          timestamp: new Date('2023-01-02T11:00:00Z'),
+          exchange: 'Coinbase',
+          notes: 'Quick sale',
+          createdAt: new Date(),
+        },
+      ];
+
+      (prisma.transaction.create as jest.Mock)
+        .mockResolvedValueOnce(mockCreatedTransactions[0])
+        .mockResolvedValueOnce(mockCreatedTransactions[1]);
+
+      const result = await importTransactionsFromCsv(userId, csvContent);
+
+      expect(prisma.transaction.create).toHaveBeenCalledTimes(2);
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId,
+          coinId: 'bitcoin',
+          coinSymbol: 'BTC',
+          type: 'buy',
+          quantity: 0.5,
+          pricePerCoin: 40000,
+          fee: 10,
+          timestamp: new Date('2023-01-01T10:00:00Z'),
+          exchange: 'Binance',
+          notes: 'Initial buy',
+        },
+      });
+      expect(prisma.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId,
+          coinId: 'ethereum',
+          coinSymbol: 'ETH',
+          type: 'sell',
+          quantity: 1,
+          pricePerCoin: 2000,
+          fee: 5,
+          timestamp: new Date('2023-01-02T11:00:00Z'),
+          exchange: 'Coinbase',
+          notes: 'Quick sale',
+        },
+      });
+      expect(result).toEqual(mockCreatedTransactions);
+    });
+
+    test('should handle CSV parsing errors', async () => {
+      const malformedCsv = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,invalid_quantity,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;
+      const userId = 'testUserId';
+
+      await expect(importTransactionsFromCsv(userId, malformedCsv)).rejects.toThrow('Failed to parse CSV content. Please check your data format.');
+    });
+
+    test('should handle database errors during transaction creation', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const csvContent = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,0.5,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;
+      const userId = 'testUserId';
+
+      (prisma.transaction.create as jest.Mock).mockRejectedValueOnce(new Error('Database connection error'));
+
+      await expect(importTransactionsFromCsv(userId, csvContent)).rejects.toThrow('Failed to import transactions into the database.');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error creating transactions from CSV:', expect.any(Error));
+      consoleErrorSpy.mockRestore();
     });
   });
 });

@@ -13,6 +13,7 @@
     "dev:client": "cd client && npm start"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
     "concurrently": "^8.2.2"
   }
 }

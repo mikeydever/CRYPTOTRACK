@@ -88,4 +88,21 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+// Import transactions from CSV
+router.post('/import', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const csvContent = req.body.csv; // Assuming CSV content is sent as a string in the 'csv' field of the request body
+
+    if (!csvContent) {
+      return res.status(400).json({ error: 'CSV content is required' });
+    }
+
+    const importedTransactions = await transactionService.importTransactionsFromCsv(userId, csvContent);
+    res.status(201).json({ message: `Successfully imported ${importedTransactions.length} transactions.`, importedTransactions });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

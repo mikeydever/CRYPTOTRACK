@@ -3,37 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Transaction } from '../types/transaction';
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionList } from '../components/TransactionList';
-
-// Mock data for demonstration purposes
-const mockTransactions: Transaction[] = [
-  {
-    id: '1',
-    coinId: 'bitcoin',
-    type: 'buy',
-    quantity: 0.5,
-    pricePerCoin: 45000,
-    timestamp: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    coinId: 'ethereum',
-    type: 'sell',
-    quantity: 2,
-    pricePerCoin: 2200,
-    timestamp: new Date().toISOString(),
-  },
-];
-
-// Placeholder for the real API call
-const fetchTransactions = async (): Promise<Transaction[]> => {
-  // In a real app, this would fetch from /api/transactions
-  return Promise.resolve(mockTransactions);
-};
+import { CsvImportForm } from '../components/CsvImportForm';
+import { fetchTransactions } from '../services/transaction.service';
 
 export function TransactionPage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
 
-  const { data: transactions, isLoading, error } = useQuery<Transaction[], Error>({
+  const { data: transactions, isLoading, error, refetch } = useQuery<Transaction[], Error>({
     queryKey: ['transactions'],
     queryFn: fetchTransactions,
   });
@@ -46,6 +22,10 @@ export function TransactionPage() {
 
   const handleCancel = () => {
     setIsFormVisible(false);
+  };
+
+  const handleImportSuccess = () => {
+    refetch(); // Refetch transactions after successful import
   };
 
   if (isLoading) return <div data-testid="loading">Loading transactions...</div>;
@@ -66,6 +46,10 @@ export function TransactionPage() {
       {isFormVisible && (
         <TransactionForm onSave={handleSave} onCancel={handleCancel} />
       )}
+
+      <div className="mt-4">
+        <CsvImportForm onImportSuccess={handleImportSuccess} />
+      </div>
 
       <div data-testid="transaction-list">
         <h2 className="text-xl font-semibold mb-2">Your Transactions</h2>
