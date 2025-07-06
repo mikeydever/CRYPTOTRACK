@@ -3,9 +3,11 @@ import { Transaction } from '../types/transaction';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transactionId: string) => void;
 }
 
-export function TransactionList({ transactions }: TransactionListProps) {
+export function TransactionList({ transactions, onEdit, onDelete }: TransactionListProps) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-gray-700 rounded-lg shadow-md">
@@ -28,8 +30,14 @@ export function TransactionList({ transactions }: TransactionListProps) {
               <td className="py-3 px-6 text-left">${transaction.pricePerCoin.toFixed(2)}</td>
               <td className="py-3 px-6 text-left">{new Date(transaction.timestamp).toLocaleDateString()}</td>
               <td className="py-3 px-6 text-left">
-                <button className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">Edit</button>
-                <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
+                <button 
+                  onClick={() => onEdit(transaction)}
+                  data-testid={`edit-transaction-${transaction.id}`}
+                  className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">Edit</button>
+                <button 
+                  onClick={() => onDelete(transaction.id!)}
+                  data-testid={`delete-transaction-${transaction.id}`}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
               </td>
             </tr>
           ))}

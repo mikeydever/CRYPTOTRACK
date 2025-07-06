@@ -1,25 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types/transaction';
 
 interface TransactionFormProps {
   onSave: (transaction: Transaction) => void;
   onCancel: () => void;
+  initialData?: Transaction | null;
 }
 
-export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
+export function TransactionForm({ onSave, onCancel, initialData }: TransactionFormProps) {
   const [coinId, setCoinId] = useState('');
   const [type, setType] = useState<'buy' | 'sell'>('buy');
   const [quantity, setQuantity] = useState('');
   const [pricePerCoin, setPricePerCoin] = useState('');
 
+  useEffect(() => {
+    if (initialData) {
+      setCoinId(initialData.coinId);
+      setType(initialData.type);
+      setQuantity(initialData.quantity.toString());
+      setPricePerCoin(initialData.pricePerCoin.toString());
+    }
+  }, [initialData]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
+      id: initialData?.id,
       coinId,
       type,
       quantity: parseFloat(quantity),
       pricePerCoin: parseFloat(pricePerCoin),
-      timestamp: new Date().toISOString(),
+      timestamp: initialData?.timestamp || new Date().toISOString(),
     });
   };
 
