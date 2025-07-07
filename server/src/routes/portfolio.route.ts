@@ -1,25 +1,27 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { calculatePortfolioMetrics } from '../services/portfolio.service';
 import { PrismaClient } from '@prisma/client';
+import { fetchCoinPrices } from '../services/coin.service';
 
 const router = Router();
-router.get('/', authMiddleware, async (req: Request, res: Response) => {
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
   const prisma = new PrismaClient();
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const transactions = await prisma.transaction.findMany({
       where: { userId },
       orderBy: { timestamp: 'desc' }
     });
 
-    // TODO: Fetch real-time prices from CoinGecko API
-    const currentPrices: { [coinId: string]: number } = {
-      bitcoin: 45000, // Placeholder
-      ethereum: 2200, // Placeholder
-    };
+    const uniqueCoinIds = [...new Set(transactions.map(t => t.coinId))];
+    const currentPrices = await fetchCoinPrices(uniqueCoinIds);
+    const formattedPrices: { [coinId: string]: number } = {};
+    for (const coinId in currentPrices) {
+      formattedPrices[coinId] = currentPrices[coinId].usd;
+    }
 
-    const portfolio = calculatePortfolioMetrics(transactions, currentPrices);
+    const portfolio = calculatePortfolioMetrics(transactions, formattedPrices);
     res.json({ success: true, data: portfolio });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

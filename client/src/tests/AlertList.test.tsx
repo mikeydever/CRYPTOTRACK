@@ -21,7 +21,7 @@ const mockAlerts: Alert[] = [
 
 describe('AlertList', () => {
   test('renders a table with the correct number of rows', () => {
-    render(<AlertList alerts={mockAlerts} />);
+    render(<AlertList alerts={mockAlerts} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
     const rows = screen.getAllByRole('row');
     // The header row plus the two data rows
@@ -29,7 +29,7 @@ describe('AlertList', () => {
   });
 
   test('renders the correct data in each row', () => {
-    render(<AlertList alerts={mockAlerts} />);
+    render(<AlertList alerts={mockAlerts} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
     expect(screen.getByText('bitcoin')).toBeInTheDocument();
     expect(screen.getByText('$50000.00')).toBeInTheDocument();

@@ -25,11 +25,11 @@ describe('Alert Service', () => {
   describe('createAlert', () => {
     test('should create a new alert', async () => {
       const alertData = {
-        userId: 'user123',
-        coinId: 'bitcoin',
-        targetPrice: 50000,
-        direction: 'above',
-      };
+      userId: 'test-user-id',
+      coinId: 'bitcoin',
+      targetPrice: 50000,
+      direction: 'above' as 'above' | 'below',
+    };
       (prisma.alert.create as jest.Mock).mockResolvedValue({ id: 'alert1', ...alertData });
 
       const result = await createAlert(alertData);

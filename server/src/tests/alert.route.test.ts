@@ -2,7 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import alertRoutes from '../routes/alert.route';
 import * as alertService from '../services/alert.service';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken } from '../../src/middleware/auth';
 
 // Mock authMiddleware and alertService
 jest.mock('../middleware/auth', () => ({

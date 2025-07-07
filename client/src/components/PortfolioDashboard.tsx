@@ -1,52 +1,18 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-
-// Type definitions for our data structures
-interface Holding {
-  coinId: string;
-  coinSymbol: string;
-  quantity: number;
-  averagePrice: number;
-  currentPrice: number;
-  totalValue: number;
-  profitLoss: number;
-  profitLossPercent: number;
-}
-
-interface PortfolioMetrics {
-  holdings: Holding[];
-  totalValue: number;
-  totalProfitLoss: number;
-  totalProfitLossPercent: number;
-}
-
-// This function now performs a real fetch operation.
-// This is the correct pattern for a real-world application and is testable.
-export const fetchPortfolio = async (): Promise<PortfolioMetrics> => {
-  // We'll use a placeholder endpoint for now, as per standard practice.
-  const response = await fetch('/api/portfolio');
-  if (!response.ok) {
-    // This allows us to test error handling in the component.
-    throw new Error('Network response was not ok');
-  }
-  return response.json();
-};
+import { fetchPortfolioMetrics } from '../services/portfolio.service';
+import { PortfolioMetrics } from '../types/portfolio';
 
 export function PortfolioDashboard() {
-  // The useQuery hook will now correctly handle loading, success, and error states
-  // based on the outcome of the real fetchPortfolio function.
   const { data, isLoading, error } = useQuery<PortfolioMetrics, Error>({
-    queryKey: ['portfolio'],
-    queryFn: fetchPortfolio,
-    refetchInterval: 30000,
+    queryKey: ['portfolioMetrics'],
+    queryFn: fetchPortfolioMetrics,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  // The loading state will be displayed while the fetch is in progress.
-  if (isLoading) return <div data-testid="loading">Loading...</div>;
-  // The error state will be displayed if the fetch fails.
+  if (isLoading) return <div data-testid="loading">Loading portfolio...</div>;
   if (error) return <div data-testid="error">Error: {error.message}</div>;
 
-  // The main content is rendered on a successful fetch.
   return (
     <div data-testid="portfolio-dashboard" className="p-4">
       <h1 className="text-2xl font-bold mb-4">Portfolio Overview</h1>
@@ -75,11 +41,11 @@ export function PortfolioDashboard() {
           <tbody className="text-gray-200 text-sm font-light">
             {data?.holdings.map((holding) => (
               <tr key={holding.coinId} className="border-b border-gray-600 hover:bg-gray-600">
-                <td className="py-3 px-6 text-left whitespace-nowrap">{holding.coinSymbol.toUpperCase()}</td>
+                <td className="py-3 px-6 text-left whitespace-nowrap">{holding.coinId.toUpperCase()}</td>
                 <td className="py-3 px-6 text-left">{holding.quantity.toFixed(4)}</td>
                 <td className="py-3 px-6 text-left">${holding.averagePrice.toFixed(2)}</td>
                 <td className="py-3 px-6 text-left">${holding.currentPrice.toFixed(2)}</td>
-                <td className="py-3 px-6 text-left">${holding.totalValue.toFixed(2)}</td>
+                <td className="py-3 px-6 text-left">${holding.value.toFixed(2)}</td>
                 <td className={`py-3 px-6 text-left ${holding.profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {holding.profitLoss >= 0 ? '+' : ''}{holding.profitLoss.toFixed(2)}
                 </td>

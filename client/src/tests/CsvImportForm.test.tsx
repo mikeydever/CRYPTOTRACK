@@ -44,9 +44,9 @@ const createTestQueryClient = () => new QueryClient({
   },
 });
 
-let queryClient;
+let queryClient: QueryClient;
 
-const createWrapper = () => ({ children }) => (
+const createWrapper = () => ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 

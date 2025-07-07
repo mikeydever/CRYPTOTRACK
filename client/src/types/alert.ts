@@ -4,4 +4,5 @@ export interface Alert {
   targetPrice: number;
   direction: 'above' | 'below';
   triggered?: boolean;
+  createdAt?: Date; // Add this line
 }

@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken } from '../../src/middleware/auth';
 import { PrismaClient } from '@prisma/client';
 
 // Mock PrismaClient and its methods

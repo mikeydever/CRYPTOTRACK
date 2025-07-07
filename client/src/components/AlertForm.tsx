@@ -1,22 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert } from '../types/alert';
 
 interface AlertFormProps {
   onSave: (alert: Alert) => void;
   onCancel: () => void;
+  initialData?: Alert | null;
 }
 
-export function AlertForm({ onSave, onCancel }: AlertFormProps) {
+export function AlertForm({ onSave, onCancel, initialData }: AlertFormProps) {
   const [coinId, setCoinId] = useState('');
   const [targetPrice, setTargetPrice] = useState('');
   const [direction, setDirection] = useState<'above' | 'below'>('above');
 
+  useEffect(() => {
+    if (initialData) {
+      setCoinId(initialData.coinId);
+      setTargetPrice(initialData.targetPrice.toString());
+      setDirection(initialData.direction);
+    }
+  }, [initialData]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
+      id: initialData?.id,
       coinId,
       targetPrice: parseFloat(targetPrice),
       direction,
+      triggered: initialData?.triggered || false, // Preserve triggered status if editing
+      createdAt: initialData?.createdAt || new Date(), // Preserve createdAt if editing
     });
   };
 

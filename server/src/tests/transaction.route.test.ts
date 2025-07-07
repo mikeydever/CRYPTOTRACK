@@ -221,4 +221,28 @@ ethereum,ETH,buy,2,2000,5,2023-01-02T12:00:00.000Z,Binance,notes 2`;
       expect(res.body).toEqual({ error: 'Invalid CSV format' });
     });
   });
+
+  describe('GET /api/transactions/export', () => {
+    test('should export transactions to CSV', async () => {
+      const mockCsvContent = 'coinId,coinSymbol\nbitcoin,BTC';
+      (transactionService.exportTransactionsToCsv as jest.Mock).mockResolvedValue(mockCsvContent);
+
+      const res = await request(app).get('/api/transactions/export');
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.headers['content-type']).toEqual('text/csv; charset=utf-8');
+      expect(res.headers['content-disposition']).toEqual('attachment; filename="transactions.csv"');
+      expect(res.text).toEqual(mockCsvContent);
+      expect(transactionService.exportTransactionsToCsv).toHaveBeenCalledWith('testUserId');
+    });
+
+    test('should handle errors during CSV export', async () => {
+      (transactionService.exportTransactionsToCsv as jest.Mock).mockRejectedValue(new Error('Export error'));
+
+      const res = await request(app).get('/api/transactions/export');
+
+      expect(res.statusCode).toEqual(500);
+      expect(res.body).toEqual({ error: 'Export error' });
+    });
+  });
 });

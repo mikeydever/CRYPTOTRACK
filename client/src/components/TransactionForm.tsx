@@ -9,6 +9,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ onSave, onCancel, initialData }: TransactionFormProps) {
   const [coinId, setCoinId] = useState('');
+  const [coinSymbol, setCoinSymbol] = useState(''); // Added coinSymbol state
   const [type, setType] = useState<'buy' | 'sell'>('buy');
   const [quantity, setQuantity] = useState('');
   const [pricePerCoin, setPricePerCoin] = useState('');
@@ -16,6 +17,7 @@ export function TransactionForm({ onSave, onCancel, initialData }: TransactionFo
   useEffect(() => {
     if (initialData) {
       setCoinId(initialData.coinId);
+      setCoinSymbol(initialData.coinSymbol); // Set coinSymbol from initialData
       setType(initialData.type);
       setQuantity(initialData.quantity.toString());
       setPricePerCoin(initialData.pricePerCoin.toString());
@@ -27,6 +29,7 @@ export function TransactionForm({ onSave, onCancel, initialData }: TransactionFo
     onSave({
       id: initialData?.id,
       coinId,
+      coinSymbol, // Added coinSymbol
       type,
       quantity: parseFloat(quantity),
       pricePerCoin: parseFloat(pricePerCoin),
@@ -38,12 +41,23 @@ export function TransactionForm({ onSave, onCancel, initialData }: TransactionFo
     <form onSubmit={handleSubmit} className="bg-gray-800 p-4 rounded-lg mb-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="coinId" className="block text-sm font-medium mb-1">Coin</label>
+          <label htmlFor="coinId" className="block text-sm font-medium mb-1">Coin ID</label>
           <input
             type="text"
             id="coinId"
             value={coinId}
             onChange={(e) => setCoinId(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-md p-2"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="coinSymbol" className="block text-sm font-medium mb-1">Coin Symbol</label>
+          <input
+            type="text"
+            id="coinSymbol"
+            value={coinSymbol}
+            onChange={(e) => setCoinSymbol(e.target.value)}
             className="w-full bg-gray-700 border border-gray-600 rounded-md p-2"
             required
           />

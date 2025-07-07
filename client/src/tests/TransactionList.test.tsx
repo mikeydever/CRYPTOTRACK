@@ -6,6 +6,7 @@ const mockTransactions: Transaction[] = [
   {
     id: '1',
     coinId: 'bitcoin',
+    coinSymbol: 'BTC',
     type: 'buy',
     quantity: 0.5,
     pricePerCoin: 45000,
@@ -14,6 +15,7 @@ const mockTransactions: Transaction[] = [
   {
     id: '2',
     coinId: 'ethereum',
+    coinSymbol: 'ETH',
     type: 'sell',
     quantity: 2,
     pricePerCoin: 2200,
@@ -23,7 +25,7 @@ const mockTransactions: Transaction[] = [
 
 describe('TransactionList', () => {
   test('renders a table with the correct number of rows', () => {
-    render(<TransactionList transactions={mockTransactions} />);
+    render(<TransactionList transactions={mockTransactions} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
     const rows = screen.getAllByRole('row');
     // The header row plus the two data rows
@@ -31,7 +33,7 @@ describe('TransactionList', () => {
   });
 
   test('renders the correct data in each row', () => {
-    render(<TransactionList transactions={mockTransactions} />);
+    render(<TransactionList transactions={mockTransactions} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
     expect(screen.getByText('bitcoin')).toBeInTheDocument();
     expect(screen.getByText('buy')).toBeInTheDocument();

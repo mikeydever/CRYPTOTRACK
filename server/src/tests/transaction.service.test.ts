@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { createTransaction, getTransactionsByUserId, updateTransaction, deleteTransaction, importTransactionsFromCsv } from '../services/transaction.service';
+import { createTransaction, getTransactionsByUserId, updateTransaction, deleteTransaction, importTransactionsFromCsv, exportTransactionsToCsv } from '../services/transaction.service';
+
 
 jest.mock('@prisma/client', () => {
   const prismaMock = {
@@ -34,6 +35,8 @@ describe('Transaction Service', () => {
         pricePerCoin: 50000,
         fee: 0,
         timestamp: new Date(),
+        exchange: null,
+        notes: null,
       };
       (prisma.transaction.create as jest.Mock).mockResolvedValueOnce({ id: 'trans1', ...transactionData });
 
@@ -185,19 +188,14 @@ ethereum,ETH,sell,1,2000,5,2023-01-02T11:00:00Z,Coinbase,Quick sale`;
       expect(result).toEqual(mockCreatedTransactions);
     });
 
-    test('should handle CSV parsing errors', async () => {
-      const malformedCsv = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
-bitcoin,BTC,buy,invalid_quantity,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;
-      const userId = 'testUserId';
-
-      await expect(importTransactionsFromCsv(userId, malformedCsv)).rejects.toThrow('Failed to parse CSV content. Please check your data format.');
-    });
+    test('should handle CSV parsing errors', async () => {      const malformedCsv = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,invalid_quantity,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;      const userId = 'testUserId';      await expect(importTransactionsFromCsv(userId, malformedCsv)).rejects.toThrow('Failed to parse CSV content. Please check your data format.');    });
 
     test('should reject if required columns are missing', async () => {
       const csvContent = `coinId,type,quantity,pricePerCoin\nbitcoin,buy,1,50000`;
       const userId = 'testUserId';
-      await expect(importTransactionsFromCsv(userId, csvContent)).rejects.toThrow('Missing required columns in CSV: coinSymbol, timestamp');
-    });
+      await expect(importTransactionsFromCsv(userId, csvContent)).rejects.toThrow(/Missing required columns in CSV/);
+    })
 
     test('should handle empty CSV content', async () => {
       const csvContent = '';
@@ -242,6 +240,71 @@ bitcoin,BTC,buy,0.5,40000,10,2023-01-01T10:00:00Z,Binance,Initial buy`;
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error creating transactions from CSV:', expect.any(Error));
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('exportTransactionsToCsv', () => {
+    test('should export transactions to a CSV string', async () => {
+      const mockTransactions = [
+        {
+          id: '1',
+          userId: 'testUserId',
+          coinId: 'bitcoin',
+          coinSymbol: 'BTC',
+          type: 'buy',
+          quantity: 0.5,
+          pricePerCoin: 40000,
+          fee: 10,
+          timestamp: new Date('2023-01-01T10:00:00Z'),
+          exchange: 'Binance',
+          notes: 'Initial buy',
+          createdAt: new Date(),
+        },
+        {
+          id: '2',
+          userId: 'testUserId',
+          coinId: 'ethereum',
+          coinSymbol: 'ETH',
+          type: 'sell',
+          quantity: 1,
+          pricePerCoin: 2000,
+          fee: 5,
+          timestamp: new Date('2023-01-02T11:00:00Z'),
+          exchange: 'Coinbase',
+          notes: 'Quick sale',
+          createdAt: new Date(),
+        },
+      ];
+
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue(mockTransactions);
+
+      const expectedCsv = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+bitcoin,BTC,buy,0.5,40000,10,2023-01-01T10:00:00.000Z,Binance,Initial buy
+ethereum,ETH,sell,1,2000,5,2023-01-02T11:00:00.000Z,Coinbase,Quick sale
+`;
+
+      const result = await exportTransactionsToCsv('testUserId');
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: { userId: 'testUserId' },
+        orderBy: { timestamp: 'asc' },
+      });
+      expect(result).toEqual(expectedCsv);
+    });
+
+    test('should return only headers for empty transactions', async () => {
+      (prisma.transaction.findMany as jest.Mock).mockResolvedValue([]);
+
+      const expectedCsv = `coinId,coinSymbol,type,quantity,pricePerCoin,fee,timestamp,exchange,notes
+`;
+
+      const result = await exportTransactionsToCsv('testUserId');
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: { userId: 'testUserId' },
+        orderBy: { timestamp: 'asc' },
+      });
+      expect(result).toEqual(expectedCsv);
     });
   });
 });

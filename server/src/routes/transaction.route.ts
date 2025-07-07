@@ -7,7 +7,7 @@ const router = Router();
 // Get all transactions for a user
 router.get('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const transactions = await transactionService.getTransactionsByUserId(userId);
     res.json(transactions);
   } catch (error: any) {
@@ -18,7 +18,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
 // Add a new transaction
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { coinId, coinSymbol, type, quantity, pricePerCoin, fee, timestamp, exchange, notes } = req.body;
 
     if (!coinId || !coinSymbol || !type || !quantity || !pricePerCoin || !timestamp) {
@@ -46,7 +46,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 // Update a transaction
 router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { id } = req.params;
     const { body } = req;
     const updateData: { [key: string]: any } = {};
@@ -56,9 +56,9 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
       'coinId', 'coinSymbol', 'type', 'quantity', 'pricePerCoin', 'fee', 'timestamp', 'exchange', 'notes'
     ];
 
-    allowedFields.forEach(field => {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
+    allowedFields.forEach((field) => {
+      if (body[field as string] !== undefined) {
+        updateData[field as string] = body[field as string];
       }
     });
 
@@ -75,7 +75,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
 // Delete a transaction
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { id } = req.params;
 
     await transactionService.deleteTransaction(id, userId);
@@ -91,7 +91,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
 // Import transactions from CSV
 router.post('/import', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const csvContent = req.body.csv; // Assuming CSV content is sent as a string in the 'csv' field of the request body
 
     if (!csvContent) {
@@ -100,6 +100,19 @@ router.post('/import', authenticateToken, async (req: Request, res: Response) =>
 
     const importedTransactions = await transactionService.importTransactionsFromCsv(userId, csvContent);
     res.status(201).json({ message: `Successfully imported ${importedTransactions.length} transactions.`, importedTransactions });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export transactions to CSV
+router.get('/export', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.userId;
+    const csv = await transactionService.exportTransactionsToCsv(userId);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('transactions.csv');
+    res.send(csv);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

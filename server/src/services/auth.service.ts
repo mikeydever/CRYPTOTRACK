@@ -24,3 +24,7 @@ export async function validateUser(email: string, password: string) {
   }
   return user;
 }
+
+export async function getUserProfile(userId: string) {
+  return prisma.user.findUnique({ where: { id: userId } });
+}

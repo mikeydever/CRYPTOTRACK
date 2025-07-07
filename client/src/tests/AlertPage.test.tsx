@@ -120,7 +120,7 @@ describe('AlertPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Alert' }));
 
     await act(async () => {
-      queryClient.invalidateQueries(['alerts']);
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
     });
 
     // Wait for the new alert to appear in the list

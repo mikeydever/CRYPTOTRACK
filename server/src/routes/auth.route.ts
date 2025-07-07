@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { createUser, validateUser } from '../services/auth.service';
+import { createUser, validateUser, getUserProfile } from '../services/auth.service';
 import jwt from 'jsonwebtoken';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey'; // Use a strong secret in production
@@ -22,7 +23,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ success: true, data: { user: { id: user.id, email: user.email }, token } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
-  }
+  } 
 });
 
 router.post('/login', async (req, res) => {
@@ -39,6 +40,18 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ success: true, data: { user: { id: user.id, email: user.email }, token } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/profile', authenticateToken, async (req: any, res) => {
+  try {
+    const user = await getUserProfile(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({ success: true, data: { user: { id: user.id, email: user.email } } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

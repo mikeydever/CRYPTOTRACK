@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { createAlert, getAlerts, updateAlert, deleteAlert } from '../services/alert.service';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
 // Get all alerts for a user
-router.get('/', authMiddleware, async (req: Request, res: Response) => {
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const alerts = await getAlerts(userId);
     res.json({ success: true, data: alerts });
   } catch (error: any) {
@@ -16,9 +16,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Create a new alert
-router.post('/', authMiddleware, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const alertData = { ...req.body, userId };
     const newAlert = await createAlert(alertData);
     res.status(201).json({ success: true, data: newAlert });
@@ -28,9 +28,9 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Update an alert
-router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const alertId = req.params.id;
     const alertData = req.body;
     const updatedAlert = await updateAlert(alertId, userId, alertData);
@@ -44,9 +44,9 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Delete an alert
-router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const alertId = req.params.id;
     const deletedAlert = await deleteAlert(alertId, userId);
     if (deletedAlert.count === 0) {

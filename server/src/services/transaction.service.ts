@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import { Transaction } from '@prisma/client';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
+import { stringify } from 'csv-stringify';
+import { parse } from 'csv-parse/sync';
 
 const prisma = new PrismaClient();
 
@@ -40,32 +42,33 @@ export async function deleteTransaction(id: string, userId: string): Promise<voi
 }
 
 export async function importTransactionsFromCsv(userId: string, csvContent: string): Promise<Transaction[]> {
-  const transactionsToCreate: Omit<Transaction, 'id' | 'createdAt'>[] = [];
+  if (!csvContent.trim()) {
+    return [];
+  }
 
-  return new Promise((resolve, reject) => {
-    const csvStream = Readable.from(csvContent).pipe(csv());
-
-    csvStream.on('headers', (headers) => {
-      const requiredHeaders = ['coinId', 'coinSymbol', 'type', 'quantity', 'pricePerCoin', 'timestamp'];
-      const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-      if (missingHeaders.length > 0) {
-        const errorMessage = `Missing required columns in CSV: ${missingHeaders.join(', ')}`;
-        csvStream.destroy(new Error(errorMessage)); // Destroy stream to stop further processing
-        reject(new Error(errorMessage));
-      }
+  try {
+    const records = parse(csvContent, {
+      columns: true,
+      skip_empty_lines: true,
     });
 
-    csvStream.on('data', (row) => {
+    const transactionsToCreate: Omit<Transaction, 'id' | 'createdAt'>[] = [];
+
+    for (const row of records) {
+      const requiredColumns = ['coinId', 'coinSymbol', 'type', 'quantity', 'pricePerCoin', 'timestamp'];
+      const missingColumns = requiredColumns.filter(col => !row[col]);
+
+      if (missingColumns.length > 0) {
+        throw new Error(`Missing required columns in CSV: ${missingColumns.join(', ')}`);
+      }
+
       const quantity = parseFloat(row.quantity);
       const pricePerCoin = parseFloat(row.pricePerCoin);
       const fee = row.fee ? parseFloat(row.fee) : 0;
       const timestamp = new Date(row.timestamp);
 
       if (isNaN(quantity) || isNaN(pricePerCoin) || isNaN(fee) || isNaN(timestamp.getTime())) {
-        const errorMessage = 'Failed to parse CSV content. Please check your data format.';
-        csvStream.destroy(new Error(errorMessage)); // Destroy stream to stop further processing
-        reject(new Error(errorMessage));
-        return; // Stop further processing of this row
+        throw new Error('Failed to parse CSV content. Please check your data format.');
       }
 
       const transaction: Omit<Transaction, 'id' | 'createdAt'> = {
@@ -81,23 +84,60 @@ export async function importTransactionsFromCsv(userId: string, csvContent: stri
         notes: row.notes || null,
       };
       transactionsToCreate.push(transaction);
-    })
-    .on('end', async () => {
-      try {
-        const createdTransactions: Transaction[] = [];
-        for (const transactionData of transactionsToCreate) {
-          const created = await prisma.transaction.create({ data: transactionData });
-          createdTransactions.push(created);
-        }
-        resolve(createdTransactions);
-      } catch (error) {
-        console.error('Error creating transactions from CSV:', error);
-        reject(new Error('Failed to import transactions into the database.'));
+    }
+
+    const createdTransactions: Transaction[] = [];
+    for (const transactionData of transactionsToCreate) {
+      const created = await prisma.transaction.create({ data: transactionData });
+      createdTransactions.push(created);
+    }
+    return createdTransactions;
+  } catch (error: any) {
+    console.error('Error importing transactions from CSV:', error);
+    if (error.message.includes('Missing required columns') || error.message.includes('Failed to parse')) {
+      throw error;
+    } else {
+      throw new Error('Failed to import transactions into the database.');
+    }
+  }
+}
+
+export async function exportTransactionsToCsv(userId: string): Promise<string> {
+  const transactions = await prisma.transaction.findMany({
+    where: { userId },
+    orderBy: { timestamp: 'asc' },
+  });
+
+  const columns = [
+    'coinId',
+    'coinSymbol',
+    'type',
+    'quantity',
+    'pricePerCoin',
+    'fee',
+    'timestamp',
+    'exchange',
+    'notes',
+  ];
+
+  const data = transactions.map(t => ({
+    coinId: t.coinId,
+    coinSymbol: t.coinSymbol,
+    type: t.type,
+    quantity: t.quantity,
+    pricePerCoin: t.pricePerCoin,
+    fee: t.fee,
+    timestamp: t.timestamp.toISOString(), // Convert Date to ISO string for CSV
+    exchange: t.exchange || '',
+    notes: t.notes || '',
+  }));
+
+  return new Promise((resolve, reject) => {
+    stringify(data, { header: true, columns: columns }, (err, output) => {
+      if (err) {
+        return reject(err);
       }
-    })
-    .on('error', (error) => {
-      console.error('CSV parsing error:', error);
-      reject(new Error('Failed to parse CSV content.'));
+      resolve(output || '');
     });
   });
 }

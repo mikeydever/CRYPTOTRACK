@@ -146,10 +146,10 @@ describe('Portfolio Service', () => {
       expect(metrics.totalProfitLoss).toBe(7000);
 
       const bitcoin = metrics.holdings.find(h => h.coinId === 'bitcoin');
-      expect(bitcoin.profitLoss).toBe(2000);
+      expect(bitcoin?.profitLoss).toBe(2000);
 
       const ethereum = metrics.holdings.find(h => h.coinId === 'ethereum');
-      expect(ethereum.profitLoss).toBe(5000);
+      expect(ethereum?.profitLoss).toBe(5000);
     });
 
     test('handles empty transactions array', () => {

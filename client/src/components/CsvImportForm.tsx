@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, UseMutationResult } from '@tanstack/react-query';
 
 interface CsvImportFormProps {
   onImportSuccess: () => void;
@@ -9,7 +9,7 @@ export function CsvImportForm({ onImportSuccess }: CsvImportFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const importCsvMutation = useMutation({
+  const importCsvMutation: UseMutationResult<any, Error, string, unknown> = useMutation({
     mutationFn: async (csvContent: string) => {
       const response = await fetch('/api/transactions/import', {
         method: 'POST',
@@ -75,11 +75,11 @@ export function CsvImportForm({ onImportSuccess }: CsvImportFormProps) {
       />
       <button
         onClick={handleImport}
-        disabled={!selectedFile || importCsvMutation.isLoading}
+        disabled={!selectedFile || importCsvMutation.isPending}
         className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded
           disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {importCsvMutation.isLoading ? 'Importing...' : 'Import CSV'}
+        {importCsvMutation.isPending ? 'Importing...' : 'Import CSV'}
       </button>
       {message && (
         <p className={`mt-2 ${importCsvMutation.isError ? 'text-red-500' : 'text-green-500'}`}>

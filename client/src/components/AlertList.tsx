@@ -3,9 +3,11 @@ import { Alert } from '../types/alert';
 
 interface AlertListProps {
   alerts: Alert[];
+  onEdit: (alert: Alert) => void;
+  onDelete: (alertId: string) => void;
 }
 
-export function AlertList({ alerts }: AlertListProps) {
+export function AlertList({ alerts, onEdit, onDelete }: AlertListProps) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-gray-700 rounded-lg shadow-md">
@@ -26,8 +28,14 @@ export function AlertList({ alerts }: AlertListProps) {
               <td className="py-3 px-6 text-left">{alert.direction}</td>
               <td className="py-3 px-6 text-left">{alert.triggered ? 'Yes' : 'No'}</td>
               <td className="py-3 px-6 text-left">
-                <button className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">Edit</button>
-                <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
+                <button 
+                  onClick={() => onEdit(alert)}
+                  data-testid={`edit-alert-${alert.id}`}
+                  className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">Edit</button>
+                <button 
+                  onClick={() => onDelete(alert.id!)}
+                  data-testid={`delete-alert-${alert.id}`}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
               </td>
             </tr>
           ))}

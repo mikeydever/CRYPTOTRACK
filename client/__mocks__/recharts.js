@@ -1,0 +1,15 @@
+module.exports = {
+  ResponsiveContainer: () => null,
+  PieChart: () => null,
+  Pie: () => null,
+  Cell: () => null,
+  Tooltip: () => null,
+  Legend: () => null,
+  BarChart: () => null,
+  Bar: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  CartesianGrid: () => null,
+  LineChart: () => null,
+  Line: () => null,
+};
