@@ -28,3 +28,7 @@ export async function validateUser(email: string, password: string) {
 export async function getUserProfile(userId: string) {
   return prisma.user.findUnique({ where: { id: userId } });
 }
+
+export async function findUserByEmail(email: string) {
+  return prisma.user.findUnique({ where: { email } });
+}

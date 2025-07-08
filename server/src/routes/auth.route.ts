@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createUser, validateUser, getUserProfile } from '../services/auth.service';
+import { createUser, validateUser, getUserProfile, findUserByEmail } from '../services/auth.service';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middleware/auth';
 
@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
-    const existingUser = await validateUser(email, password);
+    const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ success: false, message: 'User with this email already exists' });
     }
