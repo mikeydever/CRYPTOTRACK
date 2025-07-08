@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
     "@tanstack/react-query": "^5.81.5",
     "@types/react-router-dom": "^5.3.3",
     "react": "^19.1.0",
