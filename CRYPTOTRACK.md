@@ -1,3 +1,89 @@
+# CRYPTOTRACK
+
+CRYPTOTRACK is a full-stack application designed to help users manage their cryptocurrency portfolios. It provides features for tracking transactions, setting up alerts, and visualizing portfolio performance.
+
+## Features
+
+*   User Authentication (Login, Registration)
+*   Transaction Management (Add, View, Edit, Delete transactions)
+*   Portfolio Dashboard (Overview of holdings and performance)
+*   Price Alerts (Set up alerts for cryptocurrency price changes)
+*   CSV Import for transactions
+
+## Technologies Used
+
+### Client (Frontend)
+
+*   React
+*   TypeScript
+*   Tailwind CSS
+
+### Server (Backend)
+
+*   Node.js
+*   Express.js
+*   TypeScript
+*   Prisma (ORM)
+*   PostgreSQL (Database)
+
+## Setup and Installation
+
+To set up the project locally, follow these steps:
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/mikeydever/CRYPTOTRACK.git
+    cd CRYPTOTRACK
+    ```
+
+2.  **Install dependencies for the client:**
+    ```bash
+    cd client
+    npm install
+    ```
+
+3.  **Install dependencies for the server:**
+    ```bash
+    cd ../server
+    npm install
+    ```
+
+4.  **Database Setup (Server):**
+    *   Ensure you have PostgreSQL installed and running.
+    *   Create a `.env` file in the `server/` directory based on `server/.env.example` (if available, otherwise create one with your database connection string).
+    *   Run Prisma migrations to set up your database schema:
+        ```bash
+        npx prisma migrate dev --name initial_setup
+        ```
+
+## Running the Application
+
+### Start the Server
+
+From the `server/` directory:
+
+```bash
+npm run dev
+```
+
+### Start the Client
+
+From the `client/` directory:
+
+```bash
+npm start
+```
+
+The client application should open in your browser, usually at `http://localhost:3000`.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request or open an issue.
+
+## License
+
+[Specify your license here, e.g., MIT License]
+
 # CryptoTrack Pro - Complete Project Context
 
 ## Quick Start
@@ -84,7 +170,6 @@ model Transaction {
   createdAt    DateTime @default(now())
 }
 Code Patterns WITH TESTS
-API Endpoint Pattern + Test
 typescript
 Copy Code
 // routes/portfolio.ts
@@ -349,3 +434,41 @@ gemini
 
 # Validate before moving on
 > Run all tests and show me the results before we move to the next feature
+
+## Feature: Email Price Alerts
+
+**Goal:** Send an email notification to the account holder when a cryptocurrency price alert condition is met.
+
+**Implementation Steps:**
+
+1.  **Integrate with a Cryptocurrency Price API:**
+    *   Choose a reliable cryptocurrency price API (e.g., CoinGecko, CoinMarketCap).
+    *   Implement a service (`server/src/services/coin.service.ts` or a new one) to fetch current prices for specified cryptocurrencies.
+
+2.  **Implement an Alert Monitoring Service:**
+    *   Create a new service (e.g., `server/src/services/alertMonitor.service.ts`) or extend `alert.service.ts`.
+    *   This service will:
+        *   Periodically (e.g., every 1-5 minutes) fetch all active alerts from the database.
+        *   For each alert, fetch the current price of the `coinId`.
+        *   Compare the current price with `targetPrice` based on `direction` (`above` or `below`).
+        *   If the condition is met, trigger an email notification.
+        *   Consider marking alerts as "triggered" or "inactive" after sending an email to prevent repeated notifications for the same event.
+
+3.  **Set up a Scheduled Task/Cron Job:**
+    *   Use a library like `node-cron` or a simple `setInterval` in `server/src/index.ts` to call the alert monitoring service periodically.
+
+4.  **Implement Email Sending:**
+    *   Install an email sending library (e.g., `nodemailer`).
+    *   Configure email service credentials (SMTP server, username, password) as environment variables in `server/.env`.
+    *   Create an email utility function to send formatted alert emails.
+
+5.  **Update Alert Schema (Optional but Recommended):**
+    *   Consider adding fields to the `Alert` model in `prisma/schema.prisma` to track:
+        *   `triggeredAt`: DateTime (when the alert was last triggered)
+        *   `isActive`: Boolean (to easily enable/disable or mark as one-time triggered)
+
+6.  **Client-side Enhancements (Future):**
+    *   Display alert status (e.g., "Active", "Triggered").
+    *   Allow users to enable/disable alerts from the UI.
+
+```
